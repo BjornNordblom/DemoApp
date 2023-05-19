@@ -1,21 +1,31 @@
-using DemoApp.Contracts;
-using DemoApp.Entities;
 using DemoApp.Persistence;
 using DemoApp.Routes;
-using Microsoft.EntityFrameworkCore;
+using DemoApp.Services;
 using Serilog;
 
 var configuration = new LoggerConfiguration().MinimumLevel
     .Debug()
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override(
+        "Microsoft.EntityFrameworkCore",
+        Serilog.Events.LogEventLevel.Information
+    )
+    .MinimumLevel.Override(
+        "Microsoft.EntityFrameworkCore.Database.Command",
+        Serilog.Events.LogEventLevel.Information
+    )
     .WriteTo.Console()
     .Enrich.FromLogContext();
 var logger = configuration.CreateLogger();
 Log.Logger = logger;
-
+var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(logger));
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog(logger);
+var DateTimeService = new DateTimeService();
+builder.Services.AddSingleton<IDateTimeService, DateTimeService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddLogging();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

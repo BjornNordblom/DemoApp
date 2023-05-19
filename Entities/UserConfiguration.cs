@@ -11,5 +11,7 @@ public class UserEntityTypeConfiguration : IEntityTypeConfiguration<User>
         builder.Property(b => b.Id).ValueGeneratedNever();
         builder.Property(b => b.Name).IsRequired().HasMaxLength(50);
         builder.Property(b => b.Email).IsRequired().HasMaxLength(50);
+        builder.Property(b => b.CreatedAt).IsRequired();
+        builder.Property(b => b.UpdatedAt).IsRequired(false).IsConcurrencyToken();
     }
 }

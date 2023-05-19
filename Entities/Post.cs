@@ -1,13 +1,15 @@
 namespace DemoApp.Entities;
 
-public class Post
+public class Post : IAuditable
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = null!;
     public string Body { get; set; } = null!;
-
     public IReadOnlyCollection<UserPost> UserAuthoredPosts { get; private set; }
     public IReadOnlyCollection<UserPost> UserWatchedPosts { get; private set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     protected Post(string title, string body)
     {
@@ -16,7 +18,6 @@ public class Post
         Body = body;
         UserAuthoredPosts = new List<UserPost>();
         UserWatchedPosts = new List<UserPost>();
-        //UserAuthoredPosts.Append(UserPost.Create(userId, Id));
     }
 
     public static Post Create(Guid userId, string title, string body)

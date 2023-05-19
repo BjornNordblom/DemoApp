@@ -11,5 +11,7 @@ public class PostEntityTypeConfiguration : IEntityTypeConfiguration<Post>
         builder.Property(p => p.Id).ValueGeneratedNever();
         builder.Property(p => p.Title).IsRequired().HasMaxLength(50);
         builder.Property(p => p.Body).IsRequired().HasMaxLength(500);
+        builder.Property(b => b.CreatedAt).IsRequired();
+        builder.Property(b => b.UpdatedAt).IsRequired(false).IsConcurrencyToken();
     }
 }

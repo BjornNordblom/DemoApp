@@ -47,6 +47,54 @@ public static partial class UsersRoute
                 return Results.Ok(user);
             }
         );
+
+        group.MapPut(
+            "/{userId}/addwatchedpost/{postId}",
+            async (AppDbContext context, Guid userId, Guid postId) =>
+            {
+                var user = await context.Users.FindAsync(userId);
+                if (user is null)
+                {
+                    return Results.NotFound($"User {userId} does not exist");
+                }
+                var post = await context.Posts.FindAsync(postId);
+                if (post is null)
+                {
+                    return Results.NotFound($"Post {postId} does not exist");
+                }
+                if (
+                    user.UserWatchedPosts.Any(
+                        up =>
+                            up.UserId == userId
+                            && up.PostId == postId
+                            && up.Relation == UserPostRelation.Watcher
+                    )
+                )
+                {
+                    return Results.Conflict($"User {userId} already watches post {postId}");
+                }
+                user.UserWatchedPosts.Append(
+                    UserPost.Create(userId, postId, UserPostRelation.Watcher)
+                );
+                await context.SaveChangesAsync();
+                return Results.Ok();
+            }
+        );
+
+        group.MapPut(
+            "/",
+            async (AppDbContext context, UpdateUserRequest user) =>
+            {
+                var userToUpdate = await context.Users.FindAsync(user.Id);
+                if (userToUpdate is null)
+                {
+                    return Results.NotFound($"User {user.Id} does not exist");
+                }
+                userToUpdate.Update(user.Name, user.Email);
+                await context.SaveChangesAsync();
+                return Results.Ok();
+            }
+        );
         // group.MapGet("/", GetAllTodos);
         // group.MapGet("/{id}", GetTodo);
         // group.MapPost("/", CreateTodo);

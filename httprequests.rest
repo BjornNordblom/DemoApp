@@ -1,0 +1,37 @@
+@baseUrl = http://localhost:5168
+
+###
+GET {{baseUrl}}/users
+
+### 
+# @name createuser
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+    "name": "John Doe",
+    "email": "john@doe.com"
+}
+
+###
+# @name getcreateduser 
+GET {{baseUrl}}/users/{{createuser.response.body.id}}
+
+###
+# @name createpost
+POST {{baseUrl}}/posts
+Content-Type: application/json
+
+{
+    "title": "My first post",
+    "body": "This is my first post",
+    "userId": "{{createuser.response.body.id}}"
+}
+###
+# @name getposts
+GET {{baseUrl}}/posts
+Content-Type: application/json
+
+###
+# @name addwatcher
+PUT {{baseUrl}}/posts/{{createpost.response.body.id}}/addwatcher/{{createuser.response.body.id}}

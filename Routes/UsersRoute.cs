@@ -1,5 +1,6 @@
 namespace DemoApp.Routes;
 
+using AutoMapper;
 using DemoApp.Contracts;
 using DemoApp.Entities;
 using DemoApp.Persistence;
@@ -11,7 +12,7 @@ public static partial class UsersRoute
     {
         group.MapPost(
             "/",
-            async (AppDbContext context, CreateUserRequest user) =>
+            async (AppDbContext context, IMapper mapper, CreateUserRequest user) =>
             {
                 if (await context.Users.AnyAsync(u => u.Email == user.Email))
                 {
@@ -20,31 +21,31 @@ public static partial class UsersRoute
                 var newUser = User.Create(user.Name, user.Email);
                 await context.Users.AddAsync(newUser);
                 await context.SaveChangesAsync();
-                return Results.Created($"/users/{newUser.Id}", newUser);
+                return Results.Created($"/users/{newUser.Id}", mapper.Map<UserDto>(user));
             }
         );
         group.MapGet(
             "/",
-            async (AppDbContext context) =>
+            async (AppDbContext context, IMapper mapper) =>
             {
                 var users = await context.Users.ToListAsync();
-                return Results.Ok(users);
+
+                return Results.Ok(mapper.Map<List<UserDto>>(users));
             }
         );
         group.MapGet(
             "/{id}",
-            async (AppDbContext context, Guid id) =>
+            async (AppDbContext context, IMapper mapper, Guid id) =>
             {
                 var user = await context.Users
-                    .Include(u => u.UserAuthoredPosts)
-                    .Include(u => u.UserWatchedPosts)
+                    .Include(u => u.Posts)
                     .FirstOrDefaultAsync(u => u.Id == id);
 
                 if (user is null)
                 {
                     return Results.NotFound();
                 }
-                return Results.Ok(user);
+                return Results.Ok(mapper.Map<UserDto>(user));
             }
         );
 
@@ -62,20 +63,22 @@ public static partial class UsersRoute
                 {
                     return Results.NotFound($"Post {postId} does not exist");
                 }
-                if (
-                    user.UserWatchedPosts.Any(
-                        up =>
-                            up.UserId == userId
-                            && up.PostId == postId
-                            && up.Relation == UserPostRelation.Watcher
-                    )
-                )
+                context.UserPosts.Add(UserPost.Create(user.Id, post.Id, UserPostRelation.Watcher));
+                await context.SaveChangesAsync();
+                return Results.Ok();
+            }
+        );
+
+        group.MapDelete(
+            "/{userId}",
+            async (AppDbContext context, Guid userId) =>
+            {
+                var user = await context.Users.FindAsync(userId);
+                if (user is null)
                 {
-                    return Results.Conflict($"User {userId} already watches post {postId}");
+                    return Results.NotFound($"User {userId} does not exist");
                 }
-                user.UserWatchedPosts.Append(
-                    UserPost.Create(userId, postId, UserPostRelation.Watcher)
-                );
+                context.Users.Remove(user);
                 await context.SaveChangesAsync();
                 return Results.Ok();
             }
@@ -95,11 +98,6 @@ public static partial class UsersRoute
                 return Results.Ok();
             }
         );
-        // group.MapGet("/", GetAllTodos);
-        // group.MapGet("/{id}", GetTodo);
-        // group.MapPost("/", CreateTodo);
-        // group.MapPut("/{id}", UpdateTodo);
-        // group.MapDelete("/{id}", DeleteTodo);
 
         return group;
     }

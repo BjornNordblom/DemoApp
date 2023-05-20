@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 public class AppDbContext : DbContext
 {
     protected readonly IConfiguration _config;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IDateTimeService _dateTimeService;
     private readonly IHttpContextAccessor _httpContext;
@@ -15,12 +16,14 @@ public class AppDbContext : DbContext
 
     public AppDbContext(
         IConfiguration configuration,
+        IServiceProvider serviceProvider,
         ILoggerFactory loggerFactory,
         IDateTimeService dateTimeService,
         IHttpContextAccessor httpContext
     )
     {
         _config = configuration;
+        _serviceProvider = serviceProvider;
         _loggerFactory = loggerFactory;
         _dateTimeService = dateTimeService;
         _httpContext = httpContext;
@@ -56,7 +59,7 @@ public class AppDbContext : DbContext
             var e in this.ChangeTracker
                 .Entries()
                 .Where(e => e.Entity is IAuditable && e.State == EntityState.Added)
-                .Select(e => e.Entity as IAuditable)
+                .Select(e => (IAuditable)e.Entity)
         )
         {
             e.CreatedAt = _dateTimeService.UtcNow;
@@ -97,35 +100,45 @@ public class AppDbContext : DbContext
         {
             // Dot not audit entities that are not tracked, not changed, or not of type IAuditable
             if (
-                entry.State == EntityState.Detached
+                entry is null
+                || entry.State == EntityState.Detached
                 || entry.State == EntityState.Unchanged
                 || !(entry.Entity is IAuditable)
             )
                 continue;
 
-            var AuditTrace = new AuditTrace
+            string actionType = entry.State switch
             {
-                ActionType =
-                    entry.State == EntityState.Added
-                        ? "INSERT"
-                        : entry.State == EntityState.Deleted
-                            ? "DELETE"
-                            : "UPDATE",
-                EntityId = entry.Properties
-                    .Single(p => p.Metadata.IsPrimaryKey())
-                    .CurrentValue.ToString(),
-                EntityName = entry.Metadata.ClrType.Name,
-                Username = _username,
-                TimeStamp = _dateTimeService.UtcNow,
-                Changes = entry.Properties
-                    .Select(p => new { p.Metadata.Name, p.CurrentValue })
-                    .ToDictionary(i => i.Name, i => i.CurrentValue),
-                // TempProperties are properties that are only generated on save, e.g. ID's
-                // These properties will be set correctly after the audited entity has been saved
-                TempProperties = entry.Properties.Where(p => p.IsTemporary).ToList(),
+                EntityState.Added => "INSERT",
+                EntityState.Deleted => "DELETE",
+                EntityState.Modified => "UPDATE",
+                _ => "UNKNOWN"
             };
 
-            entries.Add(AuditTrace);
+            string entityId =
+                entry.Properties.Single(p => p.Metadata.IsPrimaryKey()).CurrentValue?.ToString()
+                ?? "";
+            string entityName = (entry.Metadata.ClrType.Name) ?? String.Empty;
+            string username = _username;
+            DateTime timeStamp = _dateTimeService.UtcNow;
+            Dictionary<string, object?> changes = entry.Properties
+                .Select(p => new { p.Metadata.Name, p.CurrentValue })
+                .ToDictionary(i => i.Name, i => i.CurrentValue);
+            // TempProperties are properties that are only generated on save, e.g. ID's
+            // These properties will be set correctly after the audited entity has been saved
+            var tempProperties = entry.Properties.Where(p => p.IsTemporary).ToList();
+
+            var auditTrace = AuditTrace.Create(
+                actionType,
+                entityId,
+                entityName,
+                username,
+                timeStamp,
+                changes,
+                tempProperties
+            );
+
+            entries.Add(auditTrace);
         }
 
         return entries;

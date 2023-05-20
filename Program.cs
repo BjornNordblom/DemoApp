@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using DemoApp.Persistence;
 using DemoApp.Routes;
 using DemoApp.Services;
@@ -26,17 +27,25 @@ var DateTimeService = new DateTimeService();
 builder.Services.AddSingleton<IDateTimeService, DateTimeService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddLogging();
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddNewtonsoftJson(
+        x =>
+            x.SerializerSettings.ReferenceLoopHandling = Newtonsoft
+                .Json
+                .ReferenceLoopHandling
+                .Ignore
+    );
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddDbContext<AppDbContext>();
-
 var app = builder.Build();
 
-// Recreate the database
 using var scope = app.Services.CreateScope();
 AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-await context.Database.EnsureDeletedAsync();
+
+//await context.Database.EnsureDeletedAsync();
 await context.Database.EnsureCreatedAsync();
 
 app.UseSwagger();

@@ -13,9 +13,17 @@ public class AuditTraceTypeConfiguration : IEntityTypeConfiguration<AuditTrace>
         builder
             .Property(at => at.Changes)
             .HasConversion(
-                changeObject => JsonConvert.SerializeObject(changeObject),
+                changeObject =>
+                    JsonConvert.SerializeObject(
+                        changeObject,
+                        new JsonSerializerSettings
+                        {
+                            NullValueHandling = NullValueHandling.Include,
+                            ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                        }
+                    ),
                 changeValue =>
-                    JsonConvert.DeserializeObject<Dictionary<string, object>>(changeValue)
+                    JsonConvert.DeserializeObject<Dictionary<string, object?>>(changeValue)
             );
         builder.Property(p => p.Id).ValueGeneratedOnAdd();
         builder.Property(p => p.EntityName).IsRequired().HasMaxLength(50);

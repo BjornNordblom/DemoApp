@@ -5,16 +5,17 @@ public class User : IAuditable
     public Guid Id { get; private set; }
     public string Name { get; private set; } = null!;
     public string Email { get; private set; } = null!;
-    public IReadOnlyCollection<UserPost> UserAuthoredPosts { get; private set; }
-    public IReadOnlyCollection<UserPost> UserWatchedPosts { get; private set; }
+    public ICollection<Post> Posts { get; private set; } = null!;
+    public List<UserPost> UserPosts { get; private set; } = null!;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
 
-    protected User()
+    protected User(string name, string email)
     {
-        UserAuthoredPosts = new List<UserPost>();
-        UserWatchedPosts = new List<UserPost>();
+        Id = Guid.NewGuid();
+        Name = name;
+        Email = email;
     }
 
     public User Update(string name, string email)
@@ -26,11 +27,6 @@ public class User : IAuditable
 
     public static User Create(string name, string email)
     {
-        return new User
-        {
-            Id = Guid.NewGuid(),
-            Name = name,
-            Email = email
-        };
+        return new User(name, email);
     }
 }

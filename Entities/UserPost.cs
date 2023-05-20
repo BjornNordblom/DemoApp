@@ -20,7 +20,7 @@ public class UserPost
 
     public static UserPost Create(Guid userId, Guid postId, UserPostRelation relation)
     {
-        return new UserPost
+        return new UserPost()
         {
             UserId = userId,
             PostId = postId,

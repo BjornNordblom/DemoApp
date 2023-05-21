@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DemoApp.Entities;
 
 public class User : IAuditable
@@ -5,7 +7,11 @@ public class User : IAuditable
     public Guid Id { get; private set; }
     public string Name { get; private set; } = null!;
     public string Email { get; private set; } = null!;
+
+    [JsonIgnore]
     public ICollection<Post> Posts { get; private set; } = null!;
+
+    [JsonIgnore]
     public List<UserPost> UserPosts { get; private set; } = null!;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

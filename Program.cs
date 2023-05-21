@@ -27,15 +27,15 @@ var DateTimeService = new DateTimeService();
 builder.Services.AddSingleton<IDateTimeService, DateTimeService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddLogging();
-builder.Services
-    .AddControllers()
-    .AddNewtonsoftJson(
-        x =>
-            x.SerializerSettings.ReferenceLoopHandling = Newtonsoft
-                .Json
-                .ReferenceLoopHandling
-                .Ignore
-    );
+builder.Services.AddControllers();
+
+// .AddNewtonsoftJson(
+//     x =>
+//         x.SerializerSettings.ReferenceLoopHandling = Newtonsoft
+//             .Json
+//             .ReferenceLoopHandling
+//             .Ignore
+// );
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
@@ -45,7 +45,7 @@ var app = builder.Build();
 using var scope = app.Services.CreateScope();
 AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-//await context.Database.EnsureDeletedAsync();
+await context.Database.EnsureDeletedAsync();
 await context.Database.EnsureCreatedAsync();
 
 app.UseSwagger();

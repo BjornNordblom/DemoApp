@@ -21,16 +21,34 @@ public static partial class UsersRoute
                 var newUser = User.Create(user.Name, user.Email);
                 await context.Users.AddAsync(newUser);
                 await context.SaveChangesAsync();
-                return Results.Created($"/users/{newUser.Id}", mapper.Map<UserDto>(user));
+                return Results.Created($"/users/{newUser.Id}", mapper.Map<UserDto>(newUser));
             }
         );
         group.MapGet(
             "/",
             async (AppDbContext context, IMapper mapper) =>
             {
-                var users = await context.Users.ToListAsync();
-
-                return Results.Ok(mapper.Map<List<UserDto>>(users));
+                var users = await context.Users
+                    .Include(up => up.UserPosts)
+                    .Select(
+                        x =>
+                            new UserResponseDto()
+                            {
+                                Id = x.Id,
+                                Name = x.Name,
+                                Email = x.Email,
+                                CreatedAt = x.CreatedAt,
+                                UpdatedAt = x.UpdatedAt,
+                                Author = x.UserPosts
+                                    .Where(up => up.Relation == UserPostRelation.Author)
+                                    .Select(up => up.PostId),
+                                Watcher = x.UserPosts
+                                    .Where(up => up.Relation == UserPostRelation.Watcher)
+                                    .Select(up => up.PostId),
+                            }
+                    )
+                    .ToListAsync();
+                return Results.Ok(users);
             }
         );
         group.MapGet(

@@ -32,10 +32,27 @@ public static partial class PostsRouteExtension
             "/",
             async (AppDbContext context, IMapper mapper) =>
             {
-                var posts = await context.Posts.Include(p => p.Users).ToListAsync();
+                var posts = await context.Posts
+                    .Include(up => up.UserPosts)
+                    .Select(
+                        x =>
+                            new PostResponseDto()
+                            {
+                                Id = x.Id,
+                                Title = x.Title,
+                                Body = x.Body,
+                                Authors = x.UserPosts
+                                    .Where(up => up.Relation == UserPostRelation.Author)
+                                    .Select(up => up.UserId),
+                                Watchers = x.UserPosts
+                                    .Where(up => up.Relation == UserPostRelation.Watcher)
+                                    .Select(up => up.UserId)
+                            }
+                    )
+                    .ToListAsync();
                 //var posts = await context.Posts.ToListAsync();
-                var postDtos = mapper.Map<List<PostDto>>(posts);
-                return Results.Ok(postDtos);
+                // var postDtos = mapper.Map<List<PostDto>>(posts);
+                return Results.Ok(posts);
             }
         );
         group.MapGet(
@@ -43,35 +60,76 @@ public static partial class PostsRouteExtension
             async (AppDbContext context, IMapper mapper, Guid id) =>
             {
                 var post = await context.Posts
-                    .Include(p => p.Users)
+                    .Include(up => up.UserPosts)
+                    .Select(
+                        x =>
+                            new PostResponseDto()
+                            {
+                                Id = x.Id,
+                                Title = x.Title,
+                                Body = x.Body,
+                                Authors = x.UserPosts
+                                    .Where(up => up.Relation == UserPostRelation.Author)
+                                    .Select(up => up.UserId),
+                                Watchers = x.UserPosts
+                                    .Where(up => up.Relation == UserPostRelation.Watcher)
+                                    .Select(up => up.UserId)
+                            }
+                    )
                     .FirstOrDefaultAsync(p => p.Id == id);
                 if (post is null)
                 {
                     return Results.NotFound();
                 }
-                return Results.Ok(mapper.Map<PostDto>(post));
+                return Results.Ok(post);
             }
         );
-        group.MapPut(
+        group.MapPatch(
             "/{postId}/addwatcher/{userId}",
             async (AppDbContext context, IMapper mapper, Guid postId, Guid userId) =>
             {
                 var post = await context.Posts
-                    .Include(p => p.UserPosts)
-                    .Include(p => p.Users)
+                    .Include(up => up.UserPosts)
+                    .Select(
+                        x =>
+                            new PostResponseDto()
+                            {
+                                Id = x.Id,
+                                Title = x.Title,
+                                Body = x.Body,
+                                Authors = x.UserPosts
+                                    .Where(up => up.Relation == UserPostRelation.Author)
+                                    .Select(up => up.UserId),
+                                Watchers = x.UserPosts
+                                    .Where(up => up.Relation == UserPostRelation.Watcher)
+                                    .Select(up => up.UserId)
+                            }
+                    )
                     .FirstOrDefaultAsync(p => p.Id == postId);
                 if (post is null)
                 {
-                    return Results.NotFound($"Post {postId} does not exist");
+                    return Results.NotFound();
                 }
                 var user = await context.Users.FindAsync(userId);
                 if (user is null)
                 {
-                    return Results.NotFound($"User {postId} does not exist");
+                    return Results.NotFound($"User {userId} does not exist");
+                }
+                if (
+                    context.UserPosts.Any(
+                        up =>
+                            up.PostId == postId
+                            && up.UserId == userId
+                            && up.Relation == UserPostRelation.Watcher
+                    )
+                )
+                {
+                    return Results.BadRequest($"User {userId} is already watching post {postId}");
                 }
                 context.UserPosts.Add(UserPost.Create(user.Id, post.Id, UserPostRelation.Watcher));
+                post.Watchers.Append(user.Id);
                 await context.SaveChangesAsync();
-                return Results.Ok(mapper.Map<PostDto>(post));
+                return Results.Ok(post);
             }
         );
 

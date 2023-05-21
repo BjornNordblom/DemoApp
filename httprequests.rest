@@ -10,7 +10,7 @@ Content-Type: application/json
 
 {
     "name": "John Doe",
-    "email": "john@doe.com"
+    "email": "john2@doe.com"
 }
 
 ###
@@ -25,7 +25,7 @@ Content-Type: application/json
 {
     "title": "My thrd post",
     "body": "This is my thrd post",
-    "userId": "ec58b5e2-2a4b-4869-a9e0-86fd5e595b4c"
+    "userId": "{{createuser.response.body.id}}"
 }
 ###
 # @name getposts
@@ -34,7 +34,7 @@ Content-Type: application/json
 
 ###
 # @name addwatcher
-PUT {{baseUrl}}/posts/{{createpost.response.body.id}}/addwatcher/{{createuser.response.body.id}}
+PATCH {{baseUrl}}/posts/{{createpost.response.body.id}}/addwatcher/{{createuser.response.body.id}}
 
 ###
 # @name getfirstpost
